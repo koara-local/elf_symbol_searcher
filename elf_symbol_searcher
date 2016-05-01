@@ -24,9 +24,15 @@ def ldd(excute=""):
 
     return dynamic_lib_list
 
-def readelf(dynamic_lib_list=[], symbol_name=""):
+def readelf(dynamic_lib_list=[], symbol_name='', demangle=False):
     for path in dynamic_lib_list:
+        assert symbol_name != '', "error symbol name"
+
         cmd = "readelf -s -W " + path
+
+        if demangle:
+            cmd += ' | c++filt'
+
         readelf = subprocess.check_output(cmd, shell=True)
         readelf = readelf.splitlines()
 
@@ -44,6 +50,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-e', '--excute', required=True, help='excute binary')
     parser.add_argument('-s', '--symbol', required=True, help='search symbol')
+    parser.add_argument('--demangle', action='store_true', help='demangle symbol')
     parser.add_argument('--disable-header', action='store_true', help='disable header')
 
     args = parser.parse_args()
@@ -55,4 +62,4 @@ if __name__ == '__main__':
 
     dynamic_lib_list = ldd(args.excute)
 
-    readelf(dynamic_lib_list, args.symbol)
+    readelf(dynamic_lib_list, args.symbol, args.demangle)
