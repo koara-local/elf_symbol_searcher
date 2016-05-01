@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+
+import subprocess
+import argparse
+import re
+
+def ldd(excute=""):
+    cmd = "ldd " + excute
+    ldd = subprocess.check_output(cmd, shell=True)
+    ldd = ldd.splitlines()
+
+    # remove ld and Linux Virtual Dynamic Shared Objects
+    ignore_regex = r'(.*ld-linux.*.so.*|.*linux-vdso.so.*|.*linux-gate.so.*)'
+    ldd = filter(lambda str: re.match(ignore_regex, str)==None, ldd)
+
+    parsed_ldd = []
+    for f in ldd:
+        parsed_ldd.append(str(f).translate(None, '\t').split(' '))
+
+    # create list of dependent dynamic library
+    dynamic_lib_list = [excute]
+    for f in parsed_ldd:
+        dynamic_lib_list.extend([f[2]])
+
+    return dynamic_lib_list
+
+def readelf(dynamic_lib_list=[], symbol_name=""):
+    for path in dynamic_lib_list:
+        cmd = "readelf -s -W " + path
+        readelf = subprocess.check_output(cmd, shell=True)
+        readelf = readelf.splitlines()
+
+        regex = r'.*' + symbol_name + r'.*'
+        readelf = filter(lambda str: re.match(regex, str), readelf)
+
+        print path
+        for s in readelf:
+            print s
+
+if __name__ == '__main__':
+    description_msg = "search symbol from elf file"
+
+    parser = argparse.ArgumentParser(description=description_msg)
+
+    parser.add_argument('-e', '--excute', required=True, help='excute binary')
+    parser.add_argument('-s', '--symbol', required=True, help='search symbol')
+    parser.add_argument('--disable-header', action='store_true', help='disable header')
+
+    args = parser.parse_args()
+
+    if args.disable_header == False:
+        print 'target : ' + args.excute
+        print 'search : ' + args.symbol
+        print ''
+
+    dynamic_lib_list = ldd(args.excute)
+
+    readelf(dynamic_lib_list, args.symbol)
